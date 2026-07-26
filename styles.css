@@ -133,7 +133,15 @@ body {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  outline: none;
 }
+
+.gate-editor.selected {
+  border-color: var(--gold-dim);
+  background: #2a2419;
+  box-shadow: 0 0 0 1px rgba(201, 169, 97, 0.35);
+}
+.gate-editor.selected .gate-name { color: var(--gold); }
 
 .gate-head {
   display: flex;
@@ -176,14 +184,19 @@ body {
 .nudge:active { background: #322a21; }
 .nudge:disabled { color: #4d443a; cursor: default; }
 
-/* A gate: a steel plate carrying seven holes, one of which is on the keyway. */
+/* A gate: a steel plate carrying a row of seven holes. The brass peg shows
+   where the gate currently sits; the keyway is the line down the middle.
+   Hole and gap are fixed sizes (fluid via clamp) — never percentages, or the
+   grid columns collapse to zero width and the plate disappears. */
 .plate {
+  --hole: clamp(20px, 5.6vw, 30px);
+  --gap: clamp(3px, 1.2vw, 6px);
   position: relative;
   flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  padding: 7px 8px;
+  min-width: 0;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 7px 6px;
   border-radius: 9px;
   border: 1px solid #4b4239;
   background:
@@ -203,17 +216,25 @@ body {
   bottom: -5px;
   width: 3px;
   margin-left: -1.5px;
-  background: linear-gradient(180deg, rgba(201, 169, 97, 0.10), rgba(201, 169, 97, 0.30));
+  background: linear-gradient(180deg, rgba(201, 169, 97, 0.12), rgba(201, 169, 97, 0.32));
   pointer-events: none;
+}
+
+.holes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, var(--hole));
+  gap: var(--gap);
+  width: max-content;
+  margin: 0 auto;
 }
 
 .hole-cell {
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 0;
+  width: var(--hole);
+  height: var(--hole);
+  padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
@@ -221,10 +242,17 @@ body {
 }
 .plate.static .hole-cell { cursor: default; }
 
+/* widen the tap target past the visible hole without disturbing the grid */
+.hole-cell::after {
+  content: "";
+  position: absolute;
+  inset: -8px calc(var(--gap) / -2);
+}
+
 .hole {
+  display: block;
   width: 100%;
-  max-width: 30px;
-  aspect-ratio: 1;
+  height: 100%;
   border-radius: 50%;
   background: radial-gradient(circle at 36% 30%, #131110 0%, #070606 65%);
   box-shadow:
@@ -233,18 +261,33 @@ body {
     0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.hole.lit {
+/* the gate itself — slides from hole to hole */
+.peg {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  width: var(--hole);
+  height: var(--hole);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateX(calc((var(--hole) + var(--gap)) * var(--i, 3)));
+  transition: transform 170ms cubic-bezier(0.34, 1.3, 0.64, 1);
   background: radial-gradient(circle at 36% 30%, #f4dda6 0%, #c9a961 45%, #7d5c22 100%);
   box-shadow:
     0 0 9px rgba(201, 169, 97, 0.55),
     inset 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
-.plate.aligned .hole.lit {
+.plate.aligned .peg {
   background: radial-gradient(circle at 36% 30%, #ddf0c8 0%, #8fc06a 45%, #46702c 100%);
   box-shadow:
-    0 0 10px rgba(127, 176, 105, 0.6),
+    0 0 11px rgba(127, 176, 105, 0.65),
     inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peg { transition: none; }
 }
 
 /* ---------- link chips ---------- */
@@ -361,7 +404,8 @@ body {
   color: var(--gold);
 }
 
-.player-nav { display: flex; gap: 0.5rem; }
+.player-nav { display: flex; align-items: center; gap: 0.5rem; }
+.nav-hint { font-size: 0.72rem; color: #6d6455; }
 
 /* the stacked lock shown while stepping through a solution */
 .lock {
@@ -439,7 +483,6 @@ body {
 @media (max-width: 420px) {
   .wrap { padding-left: 0.6rem; padding-right: 0.6rem; }
   .panel { padding: 0.8rem 0.7rem; }
-  .plate { gap: 2px; padding: 6px 5px; }
   .nudge { width: 28px; }
   .gate { grid-template-columns: 1.1rem 1fr 1.7rem 1.4rem; }
   .actions .btn { flex: 1 1 auto; }

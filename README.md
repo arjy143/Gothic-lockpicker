@@ -37,14 +37,20 @@ unsolvable and the page says so.
 ## Using it
 
 1. Set the **gate count** to match the lock (2–8).
-2. For each gate, **tap the hole** that is on the keyway in-game, or nudge the
-   gate with ◀ / ▶.
+2. Slide each gate to where the lock shows it. Three ways, whichever suits:
+   - **tap the hole** the gate sits on,
+   - nudge it with **◀ / ▶**,
+   - or select a gate and slide it with the **← →** arrow keys — **↑ ↓**
+     moves between gates. The selected gate is ringed in gold.
 3. Under each gate, tap the numbered chips to mark which other gates it drags,
    and whether each moves the **same** way or the **opposite** way.
-4. Press **Solve**, then walk the solution with **Next** / **Prev** (or the
-   arrow keys). The gate being shifted is outlined in gold with its direction;
+4. Press **Solve**, then walk the solution with **Next** / **Prev** or the
+   **← →** keys. The gate being shifted is outlined in gold with its direction;
    gates that move as a side effect are outlined in orange. Gates already on
-   the keyway glow green.
+   the keyway glow green — when all of them do, the lock is open.
+
+**Esc** closes the solution and hands the arrow keys back to the lock, so you
+can slide gates again.
 
 ## Files
 

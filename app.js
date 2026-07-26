@@ -1,9 +1,13 @@
 /* Gothic Lockpick Solver — UI layer. Solver lives in solver.js.
  *
- * A gate is a steel plate with seven holes. Its value is which hole currently
- * sits on the keyway: −3 is the leftmost hole, 0 the middle one, +3 the
- * rightmost. Shifting a gate by +1 moves the lit hole one place to the right.
- * The lock opens when every gate's hole is on the keyway, i.e. all values 0.
+ * A gate is a steel plate with seven holes and a brass peg that slides between
+ * them. The gate's value is which hole the peg sits on: −3 is the leftmost,
+ * 0 the middle one (on the keyway), +3 the rightmost. Shifting a gate by +1
+ * slides its peg one hole right, −1 one hole left. The lock opens when every
+ * peg is on the keyway, i.e. all values are 0.
+ *
+ * Gate values are updated in place rather than by re-rendering, so the pegs
+ * animate — both while you set the lock up and while you step a solution.
  */
 (function () {
   'use strict';
@@ -28,9 +32,12 @@
 
   var values = [];
   var rules = [];
+  var selected = 0;    // gate the arrow keys drive
   var result = null;   // last solver result
   var states = [];     // states[0] = start, states[k] = after step k
   var cursor = 0;
+  var gateEls = [];    // per-gate element refs in the editor
+  var boardEls = [];   // per-gate element refs in the step-through player
   var ownHash = null;  // hash we wrote ourselves, to ignore our own hashchange
 
   var $ = function (id) { return document.getElementById(id); };
@@ -56,6 +63,7 @@
       }
       rules[i] = keep;
     }
+    if (selected >= n) selected = n - 1;
   }
 
   function loadPuzzle(v, r) {
@@ -124,9 +132,11 @@
 
   /* ---------------- the plate ---------------- */
 
-  /* Seven holes; the one matching `value` is lit. `onPick` makes them tappable. */
-  function plate(value, onPick, label) {
-    var p = el('div', 'plate' + (onPick ? '' : ' static') + (value === 0 ? ' aligned' : ''));
+  /* Seven holes plus the sliding peg. `onPick` makes the holes tappable.
+     Returns the plate element and the peg, so the peg can be moved later. */
+  function buildPlate(onPick, label) {
+    var p = el('div', 'plate' + (onPick ? '' : ' static'));
+    var holes = el('div', 'holes');
     for (var k = 0; k < HOLES; k++) {
       var slot = k + LO; // −3 … +3, left to right
       var cell = el(onPick ? 'button' : 'div', 'hole-cell');
@@ -135,14 +145,23 @@
         cell.setAttribute('aria-label', label + ' to ' + (slot > 0 ? '+' + slot : slot));
         cell.onclick = pick(onPick, slot);
       }
-      cell.appendChild(el('div', 'hole' + (slot === value ? ' lit' : '')));
-      p.appendChild(cell);
+      cell.appendChild(el('span', 'hole'));
+      holes.appendChild(cell);
     }
-    return p;
+    var peg = el('span', 'peg');
+    holes.appendChild(peg);
+    p.appendChild(holes);
+    return { el: p, peg: peg };
   }
 
   function pick(fn, slot) {
     return function () { fn(slot); };
+  }
+
+  /* Slide a peg to the hole for `value`, and flag whether it is on the keyway. */
+  function placePeg(plate, peg, value) {
+    peg.style.setProperty('--i', String(value - LO));
+    plate.classList.toggle('aligned', value === 0);
   }
 
   /* ---------------- rendering: setup ---------------- */
@@ -157,23 +176,33 @@
   function renderGates() {
     var host = $('gates');
     host.textContent = '';
+    gateEls = [];
     for (var i = 0; i < values.length; i++) {
       host.appendChild(gateEditor(i));
     }
+    for (var k = 0; k < values.length; k++) applyGateValue(k);
+    applySelection();
   }
 
   function gateEditor(i) {
     var box = el('div', 'gate-editor');
+    box.tabIndex = 0;
+    box.onfocus = function () { selectGate(i); };
+    box.onclick = function () { selectGate(i); };
 
     var head = el('div', 'gate-head');
     head.appendChild(el('span', 'gate-name', 'Gate ' + i));
-    head.appendChild(el('span', 'gate-val' + (values[i] === 0 ? ' aligned' : ''), fmtValue(values[i])));
+    var val = el('span', 'gate-val', fmtValue(values[i]));
+    head.appendChild(val);
     box.appendChild(head);
 
     var body = el('div', 'gate-body');
-    body.appendChild(nudge(i, -1, '◀'));
-    body.appendChild(plate(values[i], function (slot) { setValue(i, slot); }, 'Set gate ' + i));
-    body.appendChild(nudge(i, 1, '▶'));
+    var left = nudge(i, -1, '◀');
+    var built = buildPlate(function (slot) { setValue(i, slot); }, 'Set gate ' + i);
+    var right = nudge(i, 1, '▶');
+    body.appendChild(left);
+    body.appendChild(built.el);
+    body.appendChild(right);
     box.appendChild(body);
 
     var links = el('div', 'links');
@@ -185,6 +214,8 @@
       any = true;
     }
     if (any) box.appendChild(links);
+
+    gateEls[i] = { card: box, plate: built.el, peg: built.peg, val: val, left: left, right: right };
     return box;
   }
 
@@ -192,8 +223,7 @@
     var b = el('button', 'nudge', glyph);
     b.type = 'button';
     b.setAttribute('aria-label', 'Shift gate ' + i + (d > 0 ? ' right' : ' left'));
-    b.disabled = d > 0 ? values[i] >= HI : values[i] <= LO;
-    b.onclick = function () { setValue(i, clampValue(values[i] + d)); };
+    b.onclick = function () { setValue(i, values[i] + d); };
     return b;
   }
 
@@ -216,11 +246,38 @@
     return chip;
   }
 
+  /* Update one gate in place so the peg animates instead of being rebuilt. */
+  function applyGateValue(i) {
+    var g = gateEls[i];
+    if (!g) return;
+    var v = values[i];
+    placePeg(g.plate, g.peg, v);
+    g.val.textContent = fmtValue(v);
+    g.val.classList.toggle('aligned', v === 0);
+    g.left.disabled = v <= LO;
+    g.right.disabled = v >= HI;
+  }
+
   function setValue(i, v) {
-    values[i] = clampValue(v);
+    selectGate(i);
+    v = clampValue(v);
+    if (v === values[i]) return;
+    values[i] = v;
     clearSolution();
-    renderGates();
+    applyGateValue(i);
     writeHash();
+  }
+
+  function selectGate(i) {
+    if (i < 0 || i >= values.length) return;
+    selected = i;
+    applySelection();
+  }
+
+  function applySelection() {
+    for (var i = 0; i < gateEls.length; i++) {
+      gateEls[i].card.classList.toggle('selected', i === selected);
+    }
   }
 
   /* ---------------- solving ---------------- */
@@ -262,6 +319,7 @@
           (res.steps.length === 1 ? '' : 's') + '. Searched ' + res.explored.toLocaleString() + ' states.');
       }
       renderSteps(res.steps);
+      buildBoard();
       $('player').hidden = false;
       renderPlayer();
     } else if (res.status === 'limit') {
@@ -298,6 +356,25 @@
 
   /* ---------------- step-through player ---------------- */
 
+  /* Built once per solution; stepping only moves pegs and swaps highlights. */
+  function buildBoard() {
+    var board = $('board');
+    board.textContent = '';
+    boardEls = [];
+    for (var i = 0; i < values.length; i++) {
+      var row = el('div', 'gate');
+      var built = buildPlate(null);
+      var val = el('span', 'val');
+      var tag = el('span', 'tag');
+      row.appendChild(el('span', 'idx', String(i)));
+      row.appendChild(built.el);
+      row.appendChild(val);
+      row.appendChild(tag);
+      board.appendChild(row);
+      boardEls[i] = { row: row, plate: built.el, peg: built.peg, val: val, tag: tag };
+    }
+  }
+
   function setCursor(k) {
     if (!states.length) return;
     cursor = Math.max(0, Math.min(states.length - 1, k));
@@ -308,8 +385,6 @@
     if (!states.length) return;
     var steps = result.steps;
     var move = cursor > 0 ? steps[cursor - 1] : null;
-    var board = $('board');
-    board.textContent = '';
 
     // Which gates this move shifts, and in which direction.
     var touched = {};
@@ -321,16 +396,13 @@
 
     var state = states[cursor];
     for (var i = 0; i < state.length; i++) {
-      var row = el('div', 'gate');
-      if (state[i] === 0) row.classList.add('zero');
-      if (move && i === move.index) row.classList.add('active');
-      else if (move && touched[i] !== undefined) row.classList.add('side');
-      row.appendChild(el('span', 'idx', String(i)));
-      row.appendChild(plate(state[i], null));
-      row.appendChild(el('span', 'val', fmtValue(state[i])));
-      row.appendChild(el('span', 'tag',
-        touched[i] === undefined ? ' ' : (touched[i] > 0 ? '▶' : '◀')));
-      board.appendChild(row);
+      var g = boardEls[i];
+      placePeg(g.plate, g.peg, state[i]);
+      g.val.textContent = fmtValue(state[i]);
+      g.row.classList.toggle('zero', state[i] === 0);
+      g.row.classList.toggle('active', !!move && i === move.index);
+      g.row.classList.toggle('side', !!move && i !== move.index && touched[i] !== undefined);
+      g.tag.textContent = touched[i] === undefined ? ' ' : (touched[i] > 0 ? '▶' : '◀');
     }
 
     $('step-label').textContent = cursor === 0
@@ -341,7 +413,7 @@
       ? 'Shift gate <strong>' + move.index + '</strong> one hole <strong>' + arrow(move.delta) +
         '</strong> (' + (move.delta > 0 ? '+1' : '−1') + ').' +
         (Object.keys(touched).length > 1 ? ' Linked gates move with it (outlined).' : '')
-      : (steps.length ? 'Starting position. Press Next to begin.' : 'Nothing to do.');
+      : (steps.length ? 'Starting position. Press Next, or ▶ / Esc to go back to editing.' : 'Nothing to do.');
 
     $('prev').disabled = cursor === 0;
     $('next').disabled = cursor >= steps.length;
@@ -429,11 +501,38 @@
     };
   });
 
+  /* Arrow keys drive the lock itself while you are setting it up, and the
+     walkthrough once a solution is on screen. Esc returns to setting up. */
   document.addEventListener('keydown', function (e) {
-    if (!states.length) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); setCursor(cursor + 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); setCursor(cursor - 1); }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var playing = states.length > 0;
+
+    if (e.key === 'Escape') {
+      if (playing) { e.preventDefault(); clearSolution(); }
+      return;
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (playing) setCursor(cursor - 1); else setValue(selected, values[selected] - 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (playing) setCursor(cursor + 1); else setValue(selected, values[selected] + 1);
+    } else if (e.key === 'ArrowUp') {
+      if (playing) return;
+      e.preventDefault();
+      focusGate(selected - 1);
+    } else if (e.key === 'ArrowDown') {
+      if (playing) return;
+      e.preventDefault();
+      focusGate(selected + 1);
+    }
   });
+
+  function focusGate(i) {
+    if (i < 0 || i >= values.length) return;
+    selectGate(i);
+    if (gateEls[i] && gateEls[i].card.focus) gateEls[i].card.focus();
+  }
 
   window.addEventListener('hashchange', function () {
     if (location.hash === ownHash) return;
