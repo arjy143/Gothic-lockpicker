@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gothic Lockpick Solver</title>
+<meta name="description" content="Solves the Gothic Remake lockpicking minigame: enter the pins and their linked rules, get the shortest legal sequence of moves.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128273;</text></svg>">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>Gothic Lockpick Solver</h1>
+    <p class="sub">Set every pin to <strong>0</strong> in the fewest moves. Nothing may ever stray outside &minus;3 &hellip; +3.</p>
+  </header>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>The lock</h2>
+      <div class="size-control">
+        <label for="size">Pins</label>
+        <div class="stepper stepper-sm">
+          <button type="button" id="size-dec" aria-label="Fewer pins">&minus;</button>
+          <output id="size" aria-live="polite">6</output>
+          <button type="button" id="size-inc" aria-label="More pins">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pins" class="pin-editors"></div>
+
+    <p class="legend">
+      <span class="key key-off">off</span> no link &nbsp;
+      <span class="key key-same">same</span> moves the same way &nbsp;
+      <span class="key key-opp">opp</span> moves the opposite way
+      <br><span class="muted">Tap a linked pin to cycle: off &rarr; same &rarr; opposite.</span>
+    </p>
+
+    <div class="actions">
+      <button type="button" id="solve" class="btn btn-primary">Solve</button>
+      <button type="button" id="reset" class="btn">Reset</button>
+      <button type="button" id="share" class="btn">Copy link</button>
+    </div>
+    <div class="actions presets">
+      <span class="muted">Examples:</span>
+      <button type="button" class="btn btn-ghost" data-preset="reference">Reference lock (6)</button>
+      <button type="button" class="btn btn-ghost" data-preset="chest">Old chest (4)</button>
+    </div>
+  </section>
+
+  <section class="panel" id="result-panel" hidden>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <div id="player" hidden>
+      <div class="player-head">
+        <div class="step-label" id="step-label">Start</div>
+        <div class="player-nav">
+          <button type="button" id="prev" class="btn btn-nav" aria-label="Previous step">&#9664; Prev</button>
+          <button type="button" id="next" class="btn btn-nav" aria-label="Next step">Next &#9654;</button>
+        </div>
+      </div>
+      <div id="board" class="board"></div>
+      <p id="move-caption" class="move-caption"></p>
+    </div>
+
+    <ol id="steps" class="steps"></ol>
+  </section>
+
+  <footer class="foot">
+    Breadth-first search &mdash; the sequence shown is always the shortest legal one.
+    <a href="https://github.com/arjy143/Gothic-lockpicker">Source</a>
+  </footer>
+
+</div>
+<script src="solver.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
