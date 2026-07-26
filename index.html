@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gothic Lockpick Solver</title>
-<meta name="description" content="Solves the Gothic Remake lockpicking minigame: enter the pins and their linked rules, get the shortest legal sequence of moves.">
+<meta name="description" content="Solves the Gothic Remake lockpicking minigame: set up the gates and how they are linked, get the shortest legal sequence of shifts.">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128273;</text></svg>">
 </head>
@@ -13,29 +13,31 @@
 
   <header class="masthead">
     <h1>Gothic Lockpick Solver</h1>
-    <p class="sub">Set every pin to <strong>0</strong> in the fewest moves. Nothing may ever stray outside &minus;3 &hellip; +3.</p>
+    <p class="sub">Slide every gate until its hole sits on the keyway. Nothing may ever slide past the last hole.</p>
   </header>
 
   <section class="panel">
     <div class="panel-head">
       <h2>The lock</h2>
       <div class="size-control">
-        <label for="size">Pins</label>
+        <label for="size">Gates</label>
         <div class="stepper stepper-sm">
-          <button type="button" id="size-dec" aria-label="Fewer pins">&minus;</button>
+          <button type="button" id="size-dec" aria-label="Fewer gates">&minus;</button>
           <output id="size" aria-live="polite">6</output>
-          <button type="button" id="size-inc" aria-label="More pins">+</button>
+          <button type="button" id="size-inc" aria-label="More gates">+</button>
         </div>
       </div>
     </div>
 
-    <div id="pins" class="pin-editors"></div>
+    <p class="hint">Tap a hole to place the gate where the lock shows it, or nudge it with
+      <span class="glyph">&#9664;</span>&nbsp;<span class="glyph">&#9654;</span>.</p>
+
+    <div id="gates" class="gate-editors"></div>
 
     <p class="legend">
-      <span class="key key-off">off</span> no link &nbsp;
-      <span class="key key-same">same</span> moves the same way &nbsp;
-      <span class="key key-opp">opp</span> moves the opposite way
-      <br><span class="muted">Tap a linked pin to cycle: off &rarr; same &rarr; opposite.</span>
+      <strong>Linked gates</strong> &mdash; the numbers under each gate are the other gates it drags along.
+      Tap to cycle: <span class="key">off</span> &rarr; <span class="key key-same">same</span> (moves the same way)
+      &rarr; <span class="key key-opp">opp</span> (moves the opposite way).
     </p>
 
     <div class="actions">
@@ -61,7 +63,7 @@
           <button type="button" id="next" class="btn btn-nav" aria-label="Next step">Next &#9654;</button>
         </div>
       </div>
-      <div id="board" class="board"></div>
+      <div id="board" class="lock"></div>
       <p id="move-caption" class="move-caption"></p>
     </div>
 

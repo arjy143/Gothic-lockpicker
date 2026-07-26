@@ -67,7 +67,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.6rem;
 }
 
 .panel-head h2 {
@@ -83,7 +83,10 @@ body {
 .size-control { display: flex; align-items: center; gap: 0.6rem; }
 .size-control label { font-size: 0.85rem; color: var(--ink-dim); }
 
-/* ---------- steppers ---------- */
+.hint { margin: 0 0 0.9rem; font-size: 0.82rem; color: var(--ink-dim); }
+.hint .glyph { color: var(--gold-dim); }
+
+/* ---------- stepper (gate count) ---------- */
 
 .stepper {
   display: inline-flex;
@@ -95,8 +98,8 @@ body {
 }
 
 .stepper button {
-  min-width: 46px;
-  min-height: 46px;
+  min-width: 42px;
+  min-height: 42px;
   border: 0;
   background: var(--panel-2);
   color: var(--gold);
@@ -113,77 +116,183 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 3ch;
-  padding: 0 0.5rem;
+  min-width: 2.5ch;
+  padding: 0 0.4rem;
   font-variant-numeric: tabular-nums;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--ink);
 }
 
-.stepper-sm button { min-width: 40px; min-height: 40px; }
+/* ---------- the gates ---------- */
 
-/* ---------- pin editors ---------- */
+.gate-editors { display: grid; gap: 0.5rem; }
 
-.pin-editors { display: grid; gap: 0.6rem; }
-
-.pin-editor {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.35rem 0.8rem;
-  align-items: center;
-  padding: 0.65rem;
+.gate-editor {
+  padding: 0.5rem 0.6rem 0.6rem;
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 
-.pin-name {
-  font-family: Georgia, serif;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  grid-column: 1 / -1;
+.gate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
-.pin-editor .stepper { grid-column: 1; grid-row: 2; }
+.gate-name {
+  font-family: Georgia, serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.gate-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--gold);
+}
+.gate-val.aligned { color: var(--ok); }
+
+.gate-body { display: flex; align-items: center; gap: 0.35rem; }
+
+.nudge {
+  flex: 0 0 auto;
+  width: 34px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--gold);
+  font-size: 0.85rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.nudge:active { background: #322a21; }
+.nudge:disabled { color: #4d443a; cursor: default; }
+
+/* A gate: a steel plate carrying seven holes, one of which is on the keyway. */
+.plate {
+  position: relative;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  border: 1px solid #4b4239;
+  background:
+    linear-gradient(180deg, #4a4239 0%, #322c26 40%, #221e1a 75%, #2b2620 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* the keyway the lockpick runs down */
+.plate::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  bottom: -5px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: linear-gradient(180deg, rgba(201, 169, 97, 0.10), rgba(201, 169, 97, 0.30));
+  pointer-events: none;
+}
+
+.hole-cell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.plate.static .hole-cell { cursor: default; }
+
+.hole {
+  width: 100%;
+  max-width: 30px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #131110 0%, #070606 65%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hole.lit {
+  background: radial-gradient(circle at 36% 30%, #f4dda6 0%, #c9a961 45%, #7d5c22 100%);
+  box-shadow:
+    0 0 9px rgba(201, 169, 97, 0.55),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.plate.aligned .hole.lit {
+  background: radial-gradient(circle at 36% 30%, #ddf0c8 0%, #8fc06a 45%, #46702c 100%);
+  box-shadow:
+    0 0 10px rgba(127, 176, 105, 0.6),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+/* ---------- link chips ---------- */
 
 .links {
-  grid-column: 2;
-  grid-row: 2;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.links-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d6455;
+  margin-right: 0.15rem;
 }
 
 .chip {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0.1rem 0.35rem;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0.1rem 0.3rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 6px;
   background: #15120f;
   color: var(--ink-dim);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.chip small { font-size: 0.6rem; font-weight: 400; letter-spacing: 0.04em; opacity: 0.85; }
+.chip small { font-size: 0.58rem; font-weight: 400; letter-spacing: 0.03em; opacity: 0.85; }
 .chip[data-state="1"] { border-color: var(--same); color: var(--same); background: #16200f; }
 .chip[data-state="-1"] { border-color: var(--opp); color: var(--opp); background: #241708; }
 
 .legend { font-size: 0.78rem; color: var(--ink-dim); margin: 0.9rem 0 0; }
+.legend strong { color: var(--ink); font-weight: 600; }
 .legend .key {
   display: inline-block;
-  padding: 0.1rem 0.4rem;
+  padding: 0.05rem 0.35rem;
   border: 1px solid var(--line);
   border-radius: 4px;
   font-weight: 600;
@@ -254,43 +363,50 @@ body {
 
 .player-nav { display: flex; gap: 0.5rem; }
 
-.board {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  padding: 0.25rem 0 0.5rem;
-}
-
-.pin {
-  flex: 1 0 44px;
-  min-width: 44px;
-  border: 1px solid var(--line);
+/* the stacked lock shown while stepping through a solution */
+.lock {
+  display: grid;
+  gap: 4px;
+  padding: 0.5rem 0.35rem;
   border-radius: var(--radius);
-  background: #15120f;
-  padding: 0.4rem 0.2rem;
-  text-align: center;
+  background: #14110e;
+  border: 1px solid #2a241d;
 }
 
-.pin .idx { display: block; font-size: 0.65rem; color: var(--ink-dim); letter-spacing: 0.05em; }
-.pin .val {
-  display: block;
-  font-size: 1.4rem;
+.gate {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr 2rem 1.6rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.gate .idx { font-size: 0.7rem; color: var(--ink-dim); text-align: center; }
+.gate .val {
+  font-size: 0.9rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
   color: var(--ink);
 }
-.pin.zero .val { color: var(--ok); }
-.pin.side { border-color: var(--opp); }
-.pin.active {
-  border-color: var(--gold);
-  background: #2b2313;
-  box-shadow: 0 0 0 1px var(--gold-dim) inset;
+.gate.zero .val { color: var(--ok); }
+.gate .tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  color: transparent;
 }
-.pin.active .val { color: var(--gold); }
-.pin .tag { display: block; font-size: 0.62rem; color: var(--gold); min-height: 0.9em; }
-.pin.side .tag { color: var(--opp); }
 
-.move-caption { margin: 0.25rem 0 0; font-size: 0.88rem; color: var(--ink-dim); min-height: 1.4em; }
+.gate.active { border-color: var(--gold); background: rgba(201, 169, 97, 0.09); }
+.gate.active .tag { color: var(--gold); }
+.gate.active .idx { color: var(--gold); }
+.gate.side { border-color: rgba(181, 113, 61, 0.6); }
+.gate.side .tag { color: var(--opp); }
+
+.move-caption { margin: 0.5rem 0 0; font-size: 0.88rem; color: var(--ink-dim); min-height: 1.4em; }
+.move-caption strong { color: var(--gold); }
 
 .steps {
   list-style: none;
@@ -320,9 +436,11 @@ body {
 .foot { text-align: center; font-size: 0.78rem; color: var(--ink-dim); padding: 0.5rem 1rem; }
 .foot a { color: var(--gold-dim); }
 
-@media (max-width: 460px) {
-  .pin-editor { grid-template-columns: 1fr; }
-  .pin-editor .stepper { grid-column: 1; grid-row: 2; justify-self: start; }
-  .links { grid-column: 1; grid-row: 3; }
+@media (max-width: 420px) {
+  .wrap { padding-left: 0.6rem; padding-right: 0.6rem; }
+  .panel { padding: 0.8rem 0.7rem; }
+  .plate { gap: 2px; padding: 6px 5px; }
+  .nudge { width: 28px; }
+  .gate { grid-template-columns: 1.1rem 1fr 1.7rem 1.4rem; }
   .actions .btn { flex: 1 1 auto; }
 }

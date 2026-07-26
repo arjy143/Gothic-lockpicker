@@ -1,9 +1,16 @@
-/* Gothic Lockpick Solver — UI layer. Solver lives in solver.js. */
+/* Gothic Lockpick Solver — UI layer. Solver lives in solver.js.
+ *
+ * A gate is a steel plate with seven holes. Its value is which hole currently
+ * sits on the keyway: −3 is the leftmost hole, 0 the middle one, +3 the
+ * rightmost. Shifting a gate by +1 moves the lit hole one place to the right.
+ * The lock opens when every gate's hole is on the keyway, i.e. all values 0.
+ */
 (function () {
   'use strict';
 
   var LO = -3;
   var HI = 3;
+  var HOLES = HI - LO + 1; // seven holes per gate
   var MIN_SIZE = 2;
   var MAX_SIZE = 8;
   var LIMIT = 6000000; // explored-state cap, keeps the tab responsive
@@ -41,7 +48,7 @@
     while (values.length < n) { values.push(0); rules.push({}); }
     values.length = n;
     rules.length = n;
-    // Drop links that point at pins which no longer exist.
+    // Drop links that point at gates which no longer exist.
     for (var i = 0; i < n; i++) {
       var keep = {};
       for (var j in rules[i]) {
@@ -64,11 +71,11 @@
   }
 
   /* ---------------- URL hash ---------------- */
-  /* Format: #1~<values csv>~<links pin0>.<links pin1>. …
-     each link group is a comma list of "<index>s" (same) / "<index>o" (opposite) */
+  /* Format: #1~<values csv>~<links gate0>.<links gate1>. …
+     each link group is a comma list of "<gate>s" (same) / "<gate>o" (opposite) */
 
   function encodeHash() {
-    var groups = rules.map(function (r, i) {
+    var groups = rules.map(function (r) {
       return Object.keys(r)
         .map(Number)
         .sort(function (a, b) { return a - b; })
@@ -115,55 +122,79 @@
     }
   }
 
+  /* ---------------- the plate ---------------- */
+
+  /* Seven holes; the one matching `value` is lit. `onPick` makes them tappable. */
+  function plate(value, onPick, label) {
+    var p = el('div', 'plate' + (onPick ? '' : ' static') + (value === 0 ? ' aligned' : ''));
+    for (var k = 0; k < HOLES; k++) {
+      var slot = k + LO; // −3 … +3, left to right
+      var cell = el(onPick ? 'button' : 'div', 'hole-cell');
+      if (onPick) {
+        cell.type = 'button';
+        cell.setAttribute('aria-label', label + ' to ' + (slot > 0 ? '+' + slot : slot));
+        cell.onclick = pick(onPick, slot);
+      }
+      cell.appendChild(el('div', 'hole' + (slot === value ? ' lit' : '')));
+      p.appendChild(cell);
+    }
+    return p;
+  }
+
+  function pick(fn, slot) {
+    return function () { fn(slot); };
+  }
+
   /* ---------------- rendering: setup ---------------- */
 
   function render() {
     $('size').textContent = String(values.length);
     $('size-dec').disabled = values.length <= MIN_SIZE;
     $('size-inc').disabled = values.length >= MAX_SIZE;
-    renderPins();
+    renderGates();
   }
 
-  function renderPins() {
-    var host = $('pins');
+  function renderGates() {
+    var host = $('gates');
     host.textContent = '';
     for (var i = 0; i < values.length; i++) {
-      host.appendChild(pinEditor(i));
+      host.appendChild(gateEditor(i));
     }
   }
 
-  function pinEditor(i) {
-    var box = el('div', 'pin-editor');
-    box.appendChild(el('div', 'pin-name', 'Pin ' + i));
+  function gateEditor(i) {
+    var box = el('div', 'gate-editor');
 
-    var stepper = el('div', 'stepper');
-    var dec = el('button', null, '−');
-    dec.type = 'button';
-    dec.setAttribute('aria-label', 'Decrease pin ' + i);
-    dec.disabled = values[i] <= LO;
-    dec.onclick = function () { bumpValue(i, -1); };
+    var head = el('div', 'gate-head');
+    head.appendChild(el('span', 'gate-name', 'Gate ' + i));
+    head.appendChild(el('span', 'gate-val' + (values[i] === 0 ? ' aligned' : ''), fmtValue(values[i])));
+    box.appendChild(head);
 
-    var out = document.createElement('output');
-    out.textContent = fmtValue(values[i]);
-
-    var inc = el('button', null, '+');
-    inc.type = 'button';
-    inc.setAttribute('aria-label', 'Increase pin ' + i);
-    inc.disabled = values[i] >= HI;
-    inc.onclick = function () { bumpValue(i, 1); };
-
-    stepper.appendChild(dec);
-    stepper.appendChild(out);
-    stepper.appendChild(inc);
-    box.appendChild(stepper);
+    var body = el('div', 'gate-body');
+    body.appendChild(nudge(i, -1, '◀'));
+    body.appendChild(plate(values[i], function (slot) { setValue(i, slot); }, 'Set gate ' + i));
+    body.appendChild(nudge(i, 1, '▶'));
+    box.appendChild(body);
 
     var links = el('div', 'links');
+    links.appendChild(el('span', 'links-label', 'drags'));
+    var any = false;
     for (var j = 0; j < values.length; j++) {
       if (j === i) continue;
       links.appendChild(linkChip(i, j));
+      any = true;
     }
-    box.appendChild(links);
+    if (any) box.appendChild(links);
     return box;
+  }
+
+  function nudge(i, d, glyph) {
+    var b = el('button', 'nudge', glyph);
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Shift gate ' + i + (d > 0 ? ' right' : ' left'));
+    b.disabled = d > 0 ? values[i] >= HI : values[i] <= LO;
+    b.onclick = function () { setValue(i, clampValue(values[i] + d)); };
+    return b;
   }
 
   function linkChip(i, j) {
@@ -172,23 +203,23 @@
     chip.type = 'button';
     chip.dataset.state = String(st);
     chip.setAttribute('aria-label',
-      'Pin ' + i + ' link to pin ' + j + ': ' + (st === 0 ? 'off' : st > 0 ? 'same' : 'opposite'));
+      'Gate ' + i + ' link to gate ' + j + ': ' + (st === 0 ? 'off' : st > 0 ? 'same' : 'opposite'));
     chip.appendChild(document.createTextNode(String(j)));
     chip.appendChild(el('small', null, st === 0 ? 'off' : st > 0 ? 'same' : 'opp'));
     chip.onclick = function () {
       var next = st === 0 ? 1 : st > 0 ? -1 : 0;
       if (next === 0) delete rules[i][j]; else rules[i][j] = next;
       clearSolution();
-      renderPins();
+      renderGates();
       writeHash();
     };
     return chip;
   }
 
-  function bumpValue(i, d) {
-    values[i] = clampValue(values[i] + d);
+  function setValue(i, v) {
+    values[i] = clampValue(v);
     clearSolution();
-    renderPins();
+    renderGates();
     writeHash();
   }
 
@@ -225,9 +256,9 @@
     if (res.status === 'solved') {
       states = [values.slice()].concat(res.steps.map(function (s) { return s.state; }));
       if (res.steps.length === 0) {
-        setStatus('ok', 'Already open — every pin is at zero.');
+        setStatus('ok', 'Already open — every gate is on the keyway.');
       } else {
-        setStatus('ok', 'Solved in <strong>' + res.steps.length + '</strong> move' +
+        setStatus('ok', 'Solved in <strong>' + res.steps.length + '</strong> shift' +
           (res.steps.length === 1 ? '' : 's') + '. Searched ' + res.explored.toLocaleString() + ' states.');
       }
       renderSteps(res.steps);
@@ -241,7 +272,7 @@
       setStatus('fail', 'Error: ' + res.message);
       $('player').hidden = true;
     } else {
-      setStatus('fail', 'Not solvable — no legal sequence of moves reaches all zeros ' +
+      setStatus('fail', 'Not solvable — no legal sequence of shifts aligns every gate ' +
         '(explored every one of ' + res.explored.toLocaleString() + ' reachable states).');
       $('player').hidden = true;
     }
@@ -255,12 +286,15 @@
       var li = document.createElement('li');
       li.dataset.step = String(k + 1);
       li.appendChild(el('span', 'n', 'Step ' + (k + 1) + ':'));
-      li.appendChild(el('span', 'op', 'press ' + (s.delta > 0 ? '+1' : '−1') + ' at pin ' + s.index));
+      li.appendChild(el('span', 'op', 'shift gate ' + s.index + ' ' + arrow(s.delta) +
+        ' (' + (s.delta > 0 ? '+1' : '−1') + ')'));
       li.appendChild(el('span', 'arr', '→ [' + s.state.map(fmtValue).join(', ') + ']'));
       li.onclick = function () { setCursor(k + 1); };
       list.appendChild(li);
     });
   }
+
+  function arrow(delta) { return delta > 0 ? 'right' : 'left'; }
 
   /* ---------------- step-through player ---------------- */
 
@@ -277,7 +311,7 @@
     var board = $('board');
     board.textContent = '';
 
-    // Which pins this move touches, and by how much.
+    // Which gates this move shifts, and in which direction.
     var touched = {};
     if (move) {
       touched[move.index] = move.delta;
@@ -287,15 +321,16 @@
 
     var state = states[cursor];
     for (var i = 0; i < state.length; i++) {
-      var pin = el('div', 'pin');
-      if (state[i] === 0) pin.classList.add('zero');
-      if (move && i === move.index) pin.classList.add('active');
-      else if (move && touched[i] !== undefined) pin.classList.add('side');
-      pin.appendChild(el('span', 'idx', String(i)));
-      pin.appendChild(el('span', 'val', fmtValue(state[i])));
-      pin.appendChild(el('span', 'tag',
-        touched[i] === undefined ? '\u00a0' : (touched[i] > 0 ? '+1' : '−1')));
-      board.appendChild(pin);
+      var row = el('div', 'gate');
+      if (state[i] === 0) row.classList.add('zero');
+      if (move && i === move.index) row.classList.add('active');
+      else if (move && touched[i] !== undefined) row.classList.add('side');
+      row.appendChild(el('span', 'idx', String(i)));
+      row.appendChild(plate(state[i], null));
+      row.appendChild(el('span', 'val', fmtValue(state[i])));
+      row.appendChild(el('span', 'tag',
+        touched[i] === undefined ? ' ' : (touched[i] > 0 ? '▶' : '◀')));
+      board.appendChild(row);
     }
 
     $('step-label').textContent = cursor === 0
@@ -303,9 +338,9 @@
       : 'Step ' + cursor + ' of ' + steps.length;
 
     $('move-caption').innerHTML = move
-      ? 'Press <strong>' + (move.delta > 0 ? '+1' : '−1') + '</strong> at pin <strong>' +
-        move.index + '</strong>.' + (Object.keys(touched).length > 1
-          ? ' Linked pins move too (highlighted).' : '')
+      ? 'Shift gate <strong>' + move.index + '</strong> one hole <strong>' + arrow(move.delta) +
+        '</strong> (' + (move.delta > 0 ? '+1' : '−1') + ').' +
+        (Object.keys(touched).length > 1 ? ' Linked gates move with it (outlined).' : '')
       : (steps.length ? 'Starting position. Press Next to begin.' : 'Nothing to do.');
 
     $('prev').disabled = cursor === 0;

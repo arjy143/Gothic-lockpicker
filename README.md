@@ -1,27 +1,50 @@
 # Gothic-lockpicker
 
 A static, single-page solver for the lockpicking minigame in the Gothic Remake.
-Enter the pins, describe how they are linked, press **Solve**, and step through
-the shortest legal sequence of moves one at a time while you play.
+Set the gates the way the lock shows them, describe how they are linked, press
+**Solve**, and step through the shortest legal sequence of shifts one at a time
+while you play.
 
 No backend, no build step, no frameworks — just `index.html` plus two plain
 `.js` files and a stylesheet.
 
 ## The puzzle
 
-- Every pin holds an integer that must stay within **−3 … +3** at all times.
-- One move is **+1** or **−1** on a chosen pin.
-- Each pin can be linked to others. A link is either **same** (the linked pin
-  moves in the same direction) or **opposite** (it moves the other way).
-- A move is **illegal** if any affected pin — the one you pressed *or* anything
-  it drags along — would leave the −3 … +3 range. Illegal moves are simply
+Each gate is a steel plate with seven holes. Its value is **which hole currently
+sits on the keyway** — the vertical line running down the middle of the stack:
+
+```
+  −3  −2  −1   0  +1  +2  +3      <- hole positions
+   o   o   o   |   o   o   o
+               ^ keyway
+```
+
+- Shifting a gate **+1** moves its lit hole one place right, **−1** one place
+  left. A gate can never slide past its outermost hole, so every value stays
+  within **−3 … +3**.
+- Gates can drag others along. A link is either **same** (the linked gate moves
+  the same direction) or **opposite** (it moves the other way).
+- A shift is **illegal** if any affected gate — the one you moved *or* anything
+  it drags — would be pushed past its last hole. Illegal shifts are simply
   unavailable.
-- Goal: every pin at **0**.
+- The lock opens when **every** gate's hole is on the keyway, i.e. all values 0.
 
 The solver runs a breadth-first search over the reachable states, so the
 sequence it shows is always a *minimum-length* solution. If the search exhausts
-every reachable state without hitting all-zeros, the puzzle is genuinely
+every reachable state without ever aligning the gates, the lock is genuinely
 unsolvable and the page says so.
+
+## Using it
+
+1. Set the **gate count** to match the lock (2–8).
+2. For each gate, **tap the hole** that is on the keyway in-game, or nudge the
+   gate with ◀ / ▶.
+3. Under each gate, tap the numbered chips to mark which other gates it drags,
+   and whether each moves the **same** way or the **opposite** way.
+4. Press **Solve**, then walk the solution with **Next** / **Prev** (or the
+   arrow keys). The gate being shifted is outlined in gold with its direction;
+   gates that move as a side effect are outlined in orange. Gates already on
+   the keyway glow green.
 
 ## Files
 
@@ -29,33 +52,34 @@ unsolvable and the page says so.
 | --- | --- |
 | `index.html` | The page. |
 | `solver.js` | The BFS solver — a direct port of `puzzle_solver.py`. |
-| `app.js` | UI: pin editors, step-through player, URL sharing. |
+| `app.js` | UI: gate editors, step-through player, URL sharing. |
 | `styles.css` | Styling. |
 | `puzzle_solver.py` | The original Python reference implementation. |
 
 `solver.js` also works under Node (`require('./solver.js').solve(values, rules)`),
 which is how it was checked against the Python reference — for the built-in
-6-pin example both produce the same 28-move sequence.
+6-gate example both produce the same 28-move sequence.
 
 ## Sharing a lock
 
-The full setup — size, pin values and every link — is encoded in the URL hash,
+The full setup — size, gate positions and every link — is encoded in the URL hash,
 so **Copy link** yields a link to that exact lock. The format is
-`#1~<values>~<links per pin>`, for example:
+`#1~<values>~<links per gate>`, for example:
 
 ```
 #1~-2,-1,0,2,2,3~.3o.1o,3o,4o.4o.0s,1o,3o.3o
 ```
 
-which is the reference lock: values `[-2,-1,0,2,2,3]`, pin 1 opposite-linked to
-pin 3, pin 2 opposite to 1/3/4, and so on (`s` = same, `o` = opposite).
+which is the reference lock: gates at `[-2,-1,0,2,2,3]`, gate 1 opposite-linked
+to gate 3, gate 2 opposite to 3 of its neighbours, and so on (`s` = same,
+`o` = opposite).
 
 ## Limits
 
 The search is capped at **6,000,000 explored states**; beyond that the page
 reports "search limit reached" rather than freezing the tab. In practice the cap
-is never reached: 8 pins is the maximum size, and the entire state space at that
-size is 7⁸ = 5,764,801 — a full sweep takes well under a second.
+is never reached: 8 gates is the maximum size, and the entire state space at
+that size is 7⁸ = 5,764,801 — a full sweep takes well under a second.
 
 ## Publishing on GitHub Pages
 
