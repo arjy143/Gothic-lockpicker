@@ -1,23 +1,17 @@
-/* Gothic Lockpick Solver — UI layer. Solver lives in solver.js.
- *
- * A gate is a steel plate with seven holes and a brass peg that slides between
- * them. The gate's value is which hole the peg sits on: −3 is the leftmost,
- * 0 the middle one (on the keyway), +3 the rightmost. Shifting a gate by +1
- * slides its peg one hole right, −1 one hole left. The lock opens when every
- * peg is on the keyway, i.e. all values are 0.
- *
- * Gate values are updated in place rather than by re-rendering, so the pegs
- * animate — both while you set the lock up and while you step a solution.
+/*
+ * UI for the gate puzzle. A gate's value is which of its seven holes sits on
+ * the keyway: -3 leftmost, 0 middle, +3 rightmost. Values are updated in place
+ * rather than by re-rendering, so the pegs animate.
  */
 (function () {
   'use strict';
 
   var LO = -3;
   var HI = 3;
-  var HOLES = HI - LO + 1; // seven holes per gate
+  var HOLES = HI - LO + 1;
   var MIN_SIZE = 2;
   var MAX_SIZE = 8;
-  var LIMIT = 6000000; // explored-state cap, keeps the tab responsive
+  var LIMIT = 6000000;
 
   var PRESETS = {
     reference: {
@@ -32,17 +26,15 @@
 
   var values = [];
   var rules = [];
-  var selected = 0;    // gate the arrow keys drive
-  var result = null;   // last solver result
-  var states = [];     // states[0] = start, states[k] = after step k
+  var selected = 0;
+  var result = null;
+  var states = [];
   var cursor = 0;
-  var gateEls = [];    // per-gate element refs in the editor
-  var boardEls = [];   // per-gate element refs in the step-through player
-  var ownHash = null;  // hash we wrote ourselves, to ignore our own hashchange
+  var gateEls = [];
+  var boardEls = [];
+  var ownHash = null;
 
   var $ = function (id) { return document.getElementById(id); };
-
-  /* ---------------- puzzle state ---------------- */
 
   function clampValue(v) {
     v = Math.round(Number(v));
@@ -55,7 +47,6 @@
     while (values.length < n) { values.push(0); rules.push({}); }
     values.length = n;
     rules.length = n;
-    // Drop links that point at gates which no longer exist.
     for (var i = 0; i < n; i++) {
       var keep = {};
       for (var j in rules[i]) {
@@ -78,10 +69,8 @@
     writeHash();
   }
 
-  /* ---------------- URL hash ---------------- */
-  /* Format: #1~<values csv>~<links gate0>.<links gate1>. …
-     each link group is a comma list of "<gate>s" (same) / "<gate>o" (opposite) */
-
+  // #1~<values csv>~<links gate0>.<links gate1>. ...
+  // where each link group is a comma list of "<gate>s" (same) or "<gate>o" (opposite)
   function encodeHash() {
     var groups = rules.map(function (r) {
       return Object.keys(r)
@@ -125,20 +114,17 @@
     try {
       history.replaceState(null, '', location.pathname + location.search + ownHash);
     } catch (e) {
-      // Some browsers reject replaceState on file:// URLs; plain assignment works.
+      // some browsers reject replaceState on file:// URLs
       if (location.hash !== ownHash) location.hash = ownHash;
     }
   }
 
-  /* ---------------- the plate ---------------- */
-
-  /* Seven holes plus the sliding peg. `onPick` makes the holes tappable.
-     Returns the plate element and the peg, so the peg can be moved later. */
+  // Seven holes plus the sliding peg. onPick makes the holes tappable.
   function buildPlate(onPick, label) {
     var p = el('div', 'plate' + (onPick ? '' : ' static'));
     var holes = el('div', 'holes');
     for (var k = 0; k < HOLES; k++) {
-      var slot = k + LO; // −3 … +3, left to right
+      var slot = k + LO;
       var cell = el(onPick ? 'button' : 'div', 'hole-cell');
       if (onPick) {
         cell.type = 'button';
@@ -158,13 +144,10 @@
     return function () { fn(slot); };
   }
 
-  /* Slide a peg to the hole for `value`, and flag whether it is on the keyway. */
   function placePeg(plate, peg, value) {
     peg.style.setProperty('--i', String(value - LO));
     plate.classList.toggle('aligned', value === 0);
   }
-
-  /* ---------------- rendering: setup ---------------- */
 
   function render() {
     $('size').textContent = String(values.length);
@@ -192,7 +175,7 @@
 
     var head = el('div', 'gate-head');
     head.appendChild(el('span', 'gate-name', 'Gate ' + i));
-    var val = el('span', 'gate-val', fmtValue(values[i]));
+    var val = el('span', 'gate-val', String(values[i]));
     head.appendChild(val);
     box.appendChild(head);
 
@@ -246,13 +229,12 @@
     return chip;
   }
 
-  /* Update one gate in place so the peg animates instead of being rebuilt. */
   function applyGateValue(i) {
     var g = gateEls[i];
     if (!g) return;
     var v = values[i];
     placePeg(g.plate, g.peg, v);
-    g.val.textContent = fmtValue(v);
+    g.val.textContent = String(v);
     g.val.classList.toggle('aligned', v === 0);
     g.left.disabled = v <= LO;
     g.right.disabled = v >= HI;
@@ -280,18 +262,16 @@
     }
   }
 
-  /* ---------------- solving ---------------- */
-
   function solve() {
     var btn = $('solve');
     btn.disabled = true;
-    btn.textContent = 'Searching…';
-    setStatus('', 'Searching for the shortest sequence…');
+    btn.textContent = 'Searching...';
+    setStatus('', 'Searching for the shortest sequence...');
     $('result-panel').hidden = false;
     $('player').hidden = true;
     $('steps').textContent = '';
 
-    // Yield once so the button state actually paints before the search blocks.
+    // yield once so the button state paints before the search blocks
     setTimeout(function () {
       var res;
       try {
@@ -313,7 +293,7 @@
     if (res.status === 'solved') {
       states = [values.slice()].concat(res.steps.map(function (s) { return s.state; }));
       if (res.steps.length === 0) {
-        setStatus('ok', 'Already open — every gate is on the keyway.');
+        setStatus('ok', 'Already open. Every gate is on the keyway.');
       } else {
         setStatus('ok', 'Solved in <strong>' + res.steps.length + '</strong> shift' +
           (res.steps.length === 1 ? '' : 's') + '. Searched ' + res.explored.toLocaleString() + ' states.');
@@ -330,8 +310,8 @@
       setStatus('fail', 'Error: ' + res.message);
       $('player').hidden = true;
     } else {
-      setStatus('fail', 'Not solvable — no legal sequence of shifts aligns every gate ' +
-        '(explored every one of ' + res.explored.toLocaleString() + ' reachable states).');
+      setStatus('fail', 'Not solvable. No legal sequence of shifts aligns every gate, ' +
+        'after exploring all ' + res.explored.toLocaleString() + ' reachable states.');
       $('player').hidden = true;
     }
     $('result-panel').hidden = false;
@@ -345,8 +325,8 @@
       li.dataset.step = String(k + 1);
       li.appendChild(el('span', 'n', 'Step ' + (k + 1) + ':'));
       li.appendChild(el('span', 'op', 'shift gate ' + s.index + ' ' + arrow(s.delta) +
-        ' (' + (s.delta > 0 ? '+1' : '−1') + ')'));
-      li.appendChild(el('span', 'arr', '→ [' + s.state.map(fmtValue).join(', ') + ']'));
+        ' (' + (s.delta > 0 ? '+1' : '-1') + ')'));
+      li.appendChild(el('span', 'arr', '-> [' + s.state.join(', ') + ']'));
       li.onclick = function () { setCursor(k + 1); };
       list.appendChild(li);
     });
@@ -354,9 +334,7 @@
 
   function arrow(delta) { return delta > 0 ? 'right' : 'left'; }
 
-  /* ---------------- step-through player ---------------- */
-
-  /* Built once per solution; stepping only moves pegs and swaps highlights. */
+  // Built once per solution; stepping only moves pegs and swaps highlights.
   function buildBoard() {
     var board = $('board');
     board.textContent = '';
@@ -386,7 +364,6 @@
     var steps = result.steps;
     var move = cursor > 0 ? steps[cursor - 1] : null;
 
-    // Which gates this move shifts, and in which direction.
     var touched = {};
     if (move) {
       touched[move.index] = move.delta;
@@ -398,7 +375,7 @@
     for (var i = 0; i < state.length; i++) {
       var g = boardEls[i];
       placePeg(g.plate, g.peg, state[i]);
-      g.val.textContent = fmtValue(state[i]);
+      g.val.textContent = String(state[i]);
       g.row.classList.toggle('zero', state[i] === 0);
       g.row.classList.toggle('active', !!move && i === move.index);
       g.row.classList.toggle('side', !!move && i !== move.index && touched[i] !== undefined);
@@ -406,14 +383,14 @@
     }
 
     $('step-label').textContent = cursor === 0
-      ? 'Start — 0 of ' + steps.length
+      ? 'Start (0 of ' + steps.length + ')'
       : 'Step ' + cursor + ' of ' + steps.length;
 
     $('move-caption').innerHTML = move
       ? 'Shift gate <strong>' + move.index + '</strong> one hole <strong>' + arrow(move.delta) +
-        '</strong> (' + (move.delta > 0 ? '+1' : '−1') + ').' +
+        '</strong> (' + (move.delta > 0 ? '+1' : '-1') + ').' +
         (Object.keys(touched).length > 1 ? ' Linked gates move with it (outlined).' : '')
-      : (steps.length ? 'Starting position. Press Next, or ▶ / Esc to go back to editing.' : 'Nothing to do.');
+      : (steps.length ? 'Starting position. Press Next to begin.' : 'Nothing to do.');
 
     $('prev').disabled = cursor === 0;
     $('next').disabled = cursor >= steps.length;
@@ -436,16 +413,12 @@
     $('steps').textContent = '';
   }
 
-  /* ---------------- helpers ---------------- */
-
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text !== undefined) n.textContent = text;
     return n;
   }
-
-  function fmtValue(v) { return v < 0 ? '−' + Math.abs(v) : String(v); }
 
   function setStatus(cls, html) {
     var s = $('status');
@@ -478,8 +451,6 @@
     }
   }
 
-  /* ---------------- wiring ---------------- */
-
   $('size-dec').onclick = function () {
     setSize(values.length - 1); clearSolution(); render(); writeHash();
   };
@@ -501,8 +472,8 @@
     };
   });
 
-  /* Arrow keys drive the lock itself while you are setting it up, and the
-     walkthrough once a solution is on screen. Esc returns to setting up. */
+  // Arrows drive the lock while setting up, and the walkthrough once a solution
+  // is on screen. Esc goes back to setting up.
   document.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var playing = states.length > 0;

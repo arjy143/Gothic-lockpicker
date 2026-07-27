@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gothic Lockpick Solver</title>
-<meta name="description" content="Solves the Gothic Remake lockpicking minigame: set up the gates and how they are linked, get the shortest legal sequence of shifts.">
+<meta name="description" content="Solver for the lockpicking minigame in the Gothic Remake. Set up the gates and how they are linked, get the shortest legal sequence of shifts.">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128273;</text></svg>">
 </head>
@@ -37,7 +37,7 @@
     <div id="gates" class="gate-editors"></div>
 
     <p class="legend">
-      <strong>Linked gates</strong> &mdash; the numbers under each gate are the other gates it drags along.
+      <strong>Linked gates:</strong> the numbers under each gate are the other gates it drags along.
       Tap to cycle: <span class="key">off</span> &rarr; <span class="key key-same">same</span> (moves the same way)
       &rarr; <span class="key key-opp">opp</span> (moves the opposite way).
     </p>
@@ -61,7 +61,7 @@
       <div class="player-head">
         <div class="step-label" id="step-label">Start</div>
         <div class="player-nav">
-          <span class="nav-hint">&larr; &rarr; step &middot; Esc edit</span>
+          <span class="nav-hint">&larr; &rarr; step, Esc edit</span>
           <button type="button" id="prev" class="btn btn-nav" aria-label="Previous step">&#9664; Prev</button>
           <button type="button" id="next" class="btn btn-nav" aria-label="Next step">Next &#9654;</button>
         </div>
@@ -74,7 +74,7 @@
   </section>
 
   <footer class="foot">
-    Breadth-first search &mdash; the sequence shown is always the shortest legal one.
+    The solution shown is always the shortest legal one.
     <a href="https://github.com/arjy143/Gothic-lockpicker">Source</a>
   </footer>
 

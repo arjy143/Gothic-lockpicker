@@ -86,7 +86,7 @@ body {
 .hint { margin: 0 0 0.9rem; font-size: 0.82rem; color: var(--ink-dim); }
 .hint .glyph { color: var(--gold-dim); }
 
-/* ---------- stepper (gate count) ---------- */
+/* ---------- gate count stepper ---------- */
 
 .stepper {
   display: inline-flex;
@@ -184,10 +184,8 @@ body {
 .nudge:active { background: #322a21; }
 .nudge:disabled { color: #4d443a; cursor: default; }
 
-/* A gate: a steel plate carrying a row of seven holes. The brass peg shows
-   where the gate currently sits; the keyway is the line down the middle.
-   Hole and gap are fixed sizes (fluid via clamp) — never percentages, or the
-   grid columns collapse to zero width and the plate disappears. */
+/* Hole and gap must be fixed sizes, not percentages, or the grid columns
+   collapse to zero width and the plate disappears. */
 .plate {
   --hole: clamp(20px, 5.6vw, 30px);
   --gap: clamp(3px, 1.2vw, 6px);
@@ -207,7 +205,6 @@ body {
     0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-/* the keyway the lockpick runs down */
 .plate::before {
   content: "";
   position: absolute;
@@ -242,7 +239,7 @@ body {
 }
 .plate.static .hole-cell { cursor: default; }
 
-/* widen the tap target past the visible hole without disturbing the grid */
+/* widens the tap target without disturbing the grid */
 .hole-cell::after {
   content: "";
   position: absolute;
@@ -261,7 +258,6 @@ body {
     0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* the gate itself — slides from hole to hole */
 .peg {
   position: absolute;
   z-index: 2;
@@ -407,7 +403,6 @@ body {
 .player-nav { display: flex; align-items: center; gap: 0.5rem; }
 .nav-hint { font-size: 0.72rem; color: #6d6455; }
 
-/* the stacked lock shown while stepping through a solution */
 .lock {
   display: grid;
   gap: 4px;
